@@ -1,0 +1,24 @@
+# Loads default set of integrations. Do not remove.
+default_config:
+
+# Load frontend themes from the themes folder
+frontend:
+  themes: !include_dir_merge_named themes
+
+camera:
+  - platform: generic
+    name: Raspberry Pi Camera
+    still_image_url: http://192.168.178.175:8081/
+    stream_source: rtsp://192.168.178.175:8081/
+    verify_ssl: false
+
+binary_sensor:
+  - platform: remote_rpi_gpio
+    host: 192.168.178.175
+    ports:
+      11: PIR Office
+      12: PIR Bedroom
+
+automation: !include automations.yaml
+script: !include scripts.yaml
+scene: !include scenes.yaml
