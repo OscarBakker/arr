@@ -171,12 +171,29 @@ services:
       - /run/dbus:/run/dbus:ro
     restart: unless-stopped
     privileged: true
+    devices:
+      - /dev/ttyUSB0:/dev/ttyUSB0
     network_mode: synobridge
     ports:
       - 8123:8123/tcp
     environment:
       TZ: Europe/Amsterdam
 
+  weboscar:
+    # Use pre-built image from registry (recommended for DSM)
+    image: ghcr.io/oscarbakker/oscarbakker:latest
+    container_name: oscarbakker
+    restart: unless-stopped
+    network_mode: synobridge
+    ports:
+      - "8080:80" # Change 8080 to your desired port
+    volumes:
+      # nginx.conf is included in the image, but you can override it if needed:
+      # - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - ./logs:/var/log/nginx # Optional: persist nginx logs
+    environment:
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
 
   tunnel:
     image: cloudflare/cloudflared:latest
