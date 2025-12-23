@@ -1,0 +1,9 @@
+# Environment files with sensitive data
+*.env
+pihole.env
+tunnel.env
+
+# But keep example files
+!*.env.example
+
+

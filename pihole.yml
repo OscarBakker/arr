@@ -1,0 +1,30 @@
+# This is the configuration for the Pi-hole container that
+# runs on the NAS. It is used to block ads and other unwanted content
+# from reaching your devices.
+services:
+  pihole:
+    container_name: pihole
+    image: pihole/pihole:latest
+    ports:
+      - "53:53/tcp"
+      - "53:53/udp"
+      - "8091:80/tcp" # Web interface op poort 8091
+    env_file:
+      - pihole.env
+    environment:
+      - PUID=1027
+      - PGID=65536
+      - TZ=Europe/Amsterdam
+      - DNS1=1.1.1.1 # Cloudflare DNS (backup)
+      - DNS2=9.9.9.9 # Quad9 DNS (backup)
+      - VIRTUAL_HOST=pihole
+    volumes:
+      - /volume1/docker/pihole/etc-pihole:/etc/pihole
+      - /volume1/docker/pihole/etc-dnsmasq.d:/etc/dnsmasq.d
+    dns:
+      - 127.0.0.1 # This is the default DNS server for the Pi-hole container
+      - 1.1.1.1 # Cloudflare DNS
+    cap_add:
+      - NET_ADMIN
+    restart: unless-stopped
+    network_mode: bridge

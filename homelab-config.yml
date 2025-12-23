@@ -18,6 +18,14 @@ binary_sensor:
       11: PIR Office
       12: PIR Bedroom
 
+http:
+  use_x_forwarded_for: true
+  trusted_proxies:
+    - 127.0.0.1
+    - ::1
+    - 172.20.0.0/16 # Docker network range (synobridge network)
+    - 192.168.178.0/24 # Your local network subnet
+
 automation: !include automations.yaml
 script: !include scripts.yaml
 scene: !include scenes.yaml
