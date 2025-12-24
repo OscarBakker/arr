@@ -26,6 +26,7 @@ http:
     - 172.20.0.0/16 # Docker network range (synobridge network)
     - 192.168.178.0/24 # Your local network subnet
   login_attempts_threshold: 5
+  ip_ban_enabled: true
 
 automation: !include automations.yaml
 script: !include scripts.yaml
