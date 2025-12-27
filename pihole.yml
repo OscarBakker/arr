@@ -19,6 +19,8 @@ services:
       - /volume1/docker/pihole:/etc/pihole
     ports:
       - 53:53/udp
+      - 53:53/tcp
+      - 67:67/udp # DHCP server port
       - 8000:80/tcp
       - 8443:443/tcp
     labels:
