@@ -4,14 +4,11 @@ services:
     container_name: gluetun
     cap_add:
       - NET_ADMIN
-    devices:
-      - /dev/net/tun:/dev/net/tun
     ports:
       - 8888:8888/tcp # HTTP proxy
       - 8388:8388/tcp # Shadowsocks
       - 8388:8388/udp # Shadowsocks
       - 8090:8090 # port for qbittorrent
-      - 8191:8191/tcp #flaresolverr
       - 9696:9696/tcp #prowlarr
     volumes:
       - /volume1/docker/gluetun:/gluetun
@@ -33,27 +30,13 @@ services:
       - com.centurylinklabs.watchtower.enable=false
     restart: unless-stopped
 
-  qbittorrent:
-    image: linuxserver/qbittorrent:latest
-    container_name: qbittorrent
-    environment:
-      - PUID=1027 #CHANGE_TO_YOUR_UID
-      - PGID=65536 #CHANGE_TO_YOUR_GID
-      - TZ=Europe/Amsterdam #CHANGE_TO_YOUR_TZ
-      - WEBUI_PORT=8090
-    volumes:
-      - /volume1/docker/qbittorrent:/config
-      - /volume1/data/torrents:/data/torrents
-    network_mode: service:gluetun # run on the vpn network
-    depends_on:
-      gluetun:
-        condition: service_healthy
-    restart: unless-stopped
-
   linuxserver-prowlarr:
     image: linuxserver/prowlarr:latest
     container_name: prowlarr
     environment:
+      - HTTPPROXY=on
+      - HTTPPROXY_USER=obakker
+      - HTTPPROXY_PASSWORD=blikblik
       - PUID=1027 #CHANGE_TO_YOUR_UID
       - PGID=65536 #CHANGE_TO_YOUR_GID
       - TZ=Europe/Amsterdam #CHANGE_TO_YOUR_TZ
@@ -61,19 +44,9 @@ services:
     volumes:
       - /volume1/docker/prowlarr:/config
     network_mode: service:gluetun
-    depends_on:
-      gluetun:
-        condition: service_healthy
-    security_opt:
-      - no-new-privileges:true
-    restart: always
-
-  flaresolverr:
-    image: flaresolverr/flaresolverr:latest
-    container_name: flaresolverr
-    environment:
-      - TZ=Europe/Amsterdam #CHANGE_TO_YOUR_TZ
-    network_mode: service:gluetun
+    ports:
+      - 9696:9696/tcp
+      - 8888:8888
     depends_on:
       gluetun:
         condition: service_healthy
