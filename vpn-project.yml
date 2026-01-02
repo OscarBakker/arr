@@ -5,11 +5,6 @@ services:
     cap_add:
       - NET_ADMIN
     ports:
-      - 8888:8888/tcp # HTTP proxy
-      - 8388:8388/tcp # Shadowsocks
-      - 8388:8388/udp # Shadowsocks
-      - 8090:8090 # port for qbittorrent
-      - 9696:9696/tcp #prowlarr
     volumes:
       - /volume1/docker/gluetun:/gluetun
     environment:
@@ -21,7 +16,7 @@ services:
       - WIREGUARD_PRIVATE_KEY=yH+BDqkMMd8tjEQ7QhQiUahCwV7LrveT9xtDMpZMcUQ=
       - WIREGUARD_ADDRESSES=10.14.0.2/16
       - SERVER_COUNTRIES=Netherlands
-      - HTTPPROXY=off #change to on if you wish to enable
+      - HTTPPROXY=on #change to on if you wish to enable
       - SHADOWSOCKS=off #change to on if you wish to enable
       - FIREWALL_OUTBOUND_SUBNETS=172.20.0.0/16,192.168.178.0/24 #change this in line with your subnet see note on guide.
     #      - FIREWALL_VPN_INPUT_PORTS=12345 #uncomment this line and change the port as per the note on the guide
@@ -43,13 +38,10 @@ services:
       - UMASK=022
     volumes:
       - /volume1/docker/prowlarr:/config
-    network_mode: service:gluetun
+    network_mode: synobridge
     ports:
       - 9696:9696/tcp
       - 8888:8888
-    depends_on:
-      gluetun:
-        condition: service_healthy
     security_opt:
       - no-new-privileges:true
     restart: always
