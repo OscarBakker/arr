@@ -17,24 +17,6 @@ services:
       - no-new-privileges:true
     restart: always
 
-  lidarr:
-    image: linuxserver/lidarr:latest
-    container_name: lidarrgit 
-    environment:
-      - PUID=1027 #CHANGE_TO_YOUR_UID
-      - PGID=65536 #CHANGE_TO_YOUR_GID
-      - TZ=Europe/Amsterdam #CHANGE_TO_YOUR_TZ
-      - UMASK=022
-    volumes:
-      - /volume1/docker/lidarr:/config
-      - /volume1/data:/data
-    ports:
-      - 8686:8686/tcp
-    network_mode: synobridge
-    security_opt:
-      - no-new-privileges:true
-    restart: always
-
   radarr:
     image: linuxserver/radarr:latest
     container_name: radarr
@@ -141,23 +123,6 @@ services:
     dns: #DNS Servers to help with speed issues some have
       - 9.9.9.9
       - 1.1.1.1
-    security_opt:
-      - no-new-privileges:true
-    restart: always
-
-   tautulli:
-    image: linuxserver/tautulli:latest
-    container_name: tautulli
-    environment:
-      - PUID=1027 #CHANGE_TO_YOUR_UID
-      - PGID=65536 #CHANGE_TO_YOUR_GID
-      - TZ=Europe/Amsterdam #CHANGE_TO_YOUR_TZ
-      - UMASK=022
-    volumes:
-      - /volume1/docker/tautulli:/config
-    ports:
-      - 8181:8181/tcp
-    network_mode: synobridge
     security_opt:
       - no-new-privileges:true
     restart: always
