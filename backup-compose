@@ -17,15 +17,23 @@ services:
       sh -c "
       apk add --no-cache rsync openssh-client inotify-tools &&
       echo 'Starting real-time surveillance backup monitor...' &&
-      echo 'Watching: /watch/surveillance' &&
+      echo 'Watching: /watch/surveillance (files, dirs, and subdirs)' &&
       echo 'Backing up to: $${PI_USER}@$${PI_IP}:$${PI_PATH}' &&
-      inotifywait -m -r -e close_write --format '%w%f' /watch/surveillance | while read file; do
-        echo \"[$$(date '+%Y-%m-%d %H:%M:%S')] New file detected: $$file\" &&
-        rsync -avz --progress 
-          -e 'ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' 
-          \"$$file\" 
-          $${PI_USER}@$${PI_IP}:$${PI_PATH}/ &&
-        echo \"[$$(date '+%Y-%m-%d %H:%M:%S')] Successfully backed up: $$file\"
+      inotifywait -m -r -e close_write,create,moved_to,delete,moved_from --format '%w%f' /watch/surveillance 2>&1 | while read path; do
+        if [ -n \"$$path\" ]; then
+          echo \"[$$(date '+%Y-%m-%d %H:%M:%S')] Change detected: $$path\" &&
+          RELATIVE=$${path#/watch/surveillance/} &&
+          PARENT_DIR=$$(dirname \"$$RELATIVE\") &&
+          if [ \"$$PARENT_DIR\" = \".\" ]; then
+            SYNC_DIR=\"/watch/surveillance\"
+            DEST_DIR=\"$${PI_PATH}\"
+          else
+            SYNC_DIR=\"/watch/surveillance/$$PARENT_DIR\"
+            DEST_DIR=\"$${PI_PATH}/$$PARENT_DIR\"
+          fi &&
+          rsync -avz --delete --progress -e 'ssh -i /root/.ssh/id_rsa -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null' \"$$SYNC_DIR/\" \"$${PI_USER}@$${PI_IP}:$$DEST_DIR/\" &&
+          echo \"[$$(date '+%Y-%m-%d %H:%M:%S')] Successfully synced: $$SYNC_DIR\"
+        fi
       done
       "
     network_mode: synobridge
