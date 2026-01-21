@@ -1,6 +1,6 @@
 services:
   logseq:
-    image: logseq/logseq-webapp:latest
+    image: ghcr.io/logseq/logseq-webapp:latest
     container_name: logseq
     ports:
       - 5173:80
