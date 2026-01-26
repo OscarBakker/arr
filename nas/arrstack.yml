@@ -127,23 +127,6 @@ services:
       - no-new-privileges:true
     restart: always
 
-  homeassistant:
-    container_name: homeassistant
-    image: "ghcr.io/home-assistant/home-assistant:stable"
-    volumes:
-      - /volume1/docker/homeassistant:/config
-      - /etc/localtime:/etc/localtime:ro
-      - /run/dbus:/run/dbus:ro
-    restart: unless-stopped
-    privileged: true
-    devices:
-      - /dev/ttyUSB0:/dev/ttyUSB0
-    network_mode: synobridge
-    ports:
-      - 8123:8123/tcp
-    environment:
-      TZ: Europe/Amsterdam
-
   weboscar:
     # Use pre-built image from registry (recommended for DSM)
     image: ghcr.io/oscarbakker/oscarbakker:latest

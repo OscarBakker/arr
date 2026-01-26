@@ -1,0 +1,20 @@
+services:
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /volume1/docker/portainer:/data
+      - /volume1/docker/portainer/certs:/certs:ro
+    ports:
+      - "9000:9000"
+      - "9443:9443"
+    network_mode: synobridge
+    environment:
+      - TZ=Europe/Amsterdam
+    command: -H unix:///var/run/docker.sock --ssl --sslcert /certs/portainer.crt --sslkey /certs/portainer.key
+
+    # todo: add ssl cert and key
