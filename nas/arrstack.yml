@@ -35,42 +35,6 @@ services:
       - no-new-privileges:true
     restart: always
 
-  readarr:
-    image: linuxserver/readarr:develop
-    container_name: readarr
-    environment:
-      - PUID=1027 #CHANGE_TO_YOUR_UID
-      - PGID=65536 #CHANGE_TO_YOUR_GID
-      - TZ=Europe/Amsterdam #CHANGE_TO_YOUR_TZ
-      - UMASK=022
-    volumes:
-      - /volume1/docker/readarr:/config
-      - /volume1/data/:/data
-    ports:
-      - 8787:8787/tcp
-    network_mode: synobridge
-    security_opt:
-      - no-new-privileges:true
-    restart: always
-
-  bazarr:
-    image: linuxserver/bazarr:latest
-    container_name: bazarr
-    environment:
-      - PUID=1027 #CHANGE_TO_YOUR_UID
-      - PGID=65536 #CHANGE_TO_YOUR_GID
-      - TZ=Europe/Amsterdam #CHANGE_TO_YOUR_TZ
-      - UMASK=022
-    volumes:
-      - /volume1/docker/bazarr:/config
-      - /volume1/data/:/data
-    ports:
-      - 6767:6767/tcp
-    network_mode: synobridge
-    security_opt:
-      - no-new-privileges:true
-    restart: always
-
   sabnzbd:
     image: linuxserver/sabnzbd:latest
     container_name: sabnzbd
@@ -134,7 +98,7 @@ services:
     restart: unless-stopped
     network_mode: synobridge
     ports:
-      - "8080:80" # Change 8080 to your desired port
+      - "8081:80" # Change 8080 to your desired port
     volumes:
       # nginx.conf is included in the image, but you can override it if needed:
       # - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
