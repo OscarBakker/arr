@@ -1,0 +1,63 @@
+# values.yaml — customize the todo-app and backup CronJob here.
+# After editing, run: helm upgrade --install todo ./helm/todo-app -f helm/todo-app/values.yaml
+
+# ---- App image ----
+image:
+  repository: todo-app
+  tag: local
+  pullPolicy: IfNotPresent
+
+# ---- Deployment ----
+replicaCount: 1
+
+# Container port (must match app's PORT env or EXPOSE in Dockerfile)
+containerPort: 3000
+
+# Kubernetes probes (optional but good practice)
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 10
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 3000
+  initialDelaySeconds: 3
+  periodSeconds: 5
+
+# ---- Service ----
+# Port exposed by the Service (cluster-internal); targetPort is the container port.
+service:
+  type: ClusterIP
+  port: 80
+
+# ---- Ingress (optional; enable if you use an Ingress controller in k3d) ----
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: todo.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+# ---- Backup CronJob ----
+# Runs on a schedule and calls the app's /api/export endpoint.
+# You can add more cron jobs by duplicating this block in a new template and values key.
+backupCron:
+  enabled: true
+  # Cron schedule: "minute hour day-of-month month day-of-week"
+  # Every 5 minutes (for testing); in production you might use "0 2 * * *" (daily at 2am)
+  schedule: "*/5 * * * *"
+  # Image that has curl to hit the app
+  image:
+    repository: curlimages/curl
+    tag: latest
+  # Concurrency: Forbid (only one run at a time), Allow, or Replace
+  concurrencyPolicy: Forbid
+  # Keep last 3 successful and 1 failed job for debugging
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1

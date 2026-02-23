@@ -1,0 +1,33 @@
+{{- if .Values.backupCron.enabled }}
+# CronJob: runs on a schedule and calls the todo-app /api/export endpoint.
+# The job pod runs curl, so the backup is just a GET request; in a real setup
+# you might write the response to a volume or send it to S3.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "todo-app.fullname" . }}-backup
+  labels:
+    {{- include "todo-app.labels" . | nindent 4 }}
+    app.kubernetes.io/component: backup
+spec:
+  schedule: {{ .Values.backupCron.schedule | quote }}
+  concurrencyPolicy: {{ .Values.backupCron.concurrencyPolicy }}
+  successfulJobsHistoryLimit: {{ .Values.backupCron.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.backupCron.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: "{{ .Values.backupCron.image.repository }}:{{ .Values.backupCron.image.tag }}"
+              # Call the todo-app Service (same namespace). Kubernetes DNS: <service>.<namespace>.svc.cluster.local
+              command:
+                - sh
+                - -c
+                - |
+                  echo "Backup at $(date -Iseconds)"
+                  curl -sf "http://{{ include "todo-app.fullname" . }}:{{ .Values.service.port }}/api/export" | head -c 500
+                  echo ""
+{{- end }}
