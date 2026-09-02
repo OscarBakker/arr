@@ -1,0 +1,109 @@
+# Portainer: Stacks → Add stack → paste this file (or Git).
+# After deploy:
+#   1. Phone: Signal → Settings → Linked devices → Link new device.
+#   2. Open http://<pi-ip>:8090/v1/qrcodelink?device_name=homeserver and scan the QR.
+#   3. Cron UI: http://<pi-ip>:8091 — create an exec job (values live here, not in this file):
+#        Type:      exec
+#        Container: signal-sender
+#        Command:   /usr/local/bin/send-signal.sh +31654363222 +31624527969 Heb je al de rijvergoeding al overgemaakt?
+#        Schedule:  0 8 * * *
+#      Arg 1 = your linked Signal number, arg 2 = recipient, the rest = message.
+# SIGNAL_ACCOUNT is YOUR linked number. RECIPIENT is who receives the texts.
+
+services:
+  signal-api:
+    image: bbernhard/signal-cli-rest-api:latest
+    container_name: signal-api
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Amsterdam
+      # json-rpc keeps signal-cli warm (Pi 5 / arm64). Use native if you want less RAM.
+      - MODE=json-rpc
+    volumes:
+      # Linked-device keys. Do not delete this volume or you must re-scan the QR.
+      - signal-cli-config:/home/.local/share/signal-cli
+    ports:
+      # Swagger + QR link. LAN only — do not forward this on the router.
+      - "8090:8080"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://127.0.0.1:8080/v1/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+  # Helper Ofelia execs into. Number, recipient, and text are set on the job in the UI.
+  signal-sender:
+    image: alpine:3.21
+    container_name: signal-sender
+    restart: unless-stopped
+    depends_on:
+      signal-api:
+        condition: service_healthy
+    environment:
+      TZ: Europe/Amsterdam
+      SIGNAL_API_URL: http://signal-api:8080
+    entrypoint: ["/bin/sh", "-c"]
+    # command must be a list with ONE string item. A bare "command: |" scalar
+    # gets word-split by Compose into many argv entries (breaks the script).
+    command:
+      - |
+        set -eu
+        until apk add --no-cache curl jq tzdata; do
+          echo "apk add failed (network not ready?), retrying in 5s..."
+          sleep 5
+        done
+        cat > /usr/local/bin/send-signal.sh << 'EOF'
+        #!/bin/sh
+        set -eu
+        SIGNAL_ACCOUNT="$${1:-$${SIGNAL_ACCOUNT:-}}"
+        RECIPIENT="$${2:-$${RECIPIENT:-}}"
+        shift 2 2>/dev/null || true
+        MESSAGE="$${*:-$${MESSAGE:-}}"
+        : "$${SIGNAL_ACCOUNT:?usage: send-signal.sh <your-number> <recipient> <message>}"
+        : "$${RECIPIENT:?usage: send-signal.sh <your-number> <recipient> <message>}"
+        : "$${MESSAGE:?usage: send-signal.sh <your-number> <recipient> <message>}"
+        echo "[$$(date)] Sending Signal to $${RECIPIENT}"
+        payload=$$(jq -n --arg message "$$MESSAGE" --arg number "$$SIGNAL_ACCOUNT" --arg recipient "$$RECIPIENT" '{message: $$message, number: $$number, recipients: [$$recipient]}')
+        curl -sS -f -X POST -H "Content-Type: application/json" -d "$$payload" "$${SIGNAL_API_URL}/v2/send"
+        echo
+        EOF
+        chmod +x /usr/local/bin/send-signal.sh
+        exec sleep infinity
+    healthcheck:
+      test: ["CMD-SHELL", "test -x /usr/local/bin/send-signal.sh"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 20s
+
+  ofelia:
+    image: ghcr.io/netresearch/ofelia:latest
+    container_name: ofelia
+    restart: unless-stopped
+    depends_on:
+      signal-sender:
+        condition: service_healthy
+    command: daemon --docker-events
+    environment:
+      TZ: Europe/Amsterdam
+      OFELIA_ENABLE_WEB: "true"
+      OFELIA_WEB_ADDRESS: ":8081"
+      OFELIA_LOG_LEVEL: INFO
+      # Keeps jobs created in the UI across container restarts.
+      OFELIA_STATE_FILE: /var/lib/ofelia/state.json
+      # Optional login for the cron UI (LAN-only demo leaves this off):
+      # OFELIA_WEB_AUTH_ENABLED: "true"
+      # OFELIA_WEB_USERNAME: admin
+      # OFELIA_WEB_PASSWORD_HASH: <bcrypt hash>
+      # OFELIA_WEB_SECRET_KEY: change-me
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ofelia-state:/var/lib/ofelia
+    ports:
+      # Cron manager UI. LAN only — do not forward this on the router.
+      - "8091:8081"
+
+volumes:
+  signal-cli-config:
+  ofelia-state:

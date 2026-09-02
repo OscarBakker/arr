@@ -1,0 +1,45 @@
+# Portainer: Stacks → Add stack → paste this file (or Git).
+# After deploy: http://<pi-ip>:19999
+# LAN only — do not forward 19999 on the router. host network binds that port on the Pi.
+#
+# What's out there for a one-view CPU/RAM UI:
+#   Netdata (this file) — open the URL, gauges are already there. Also temp, disk, Docker.
+#   Glances            — lighter, one image (nicolargo/glances), web UI on :61208. Less pretty.
+#   Beszel             — modern cards + history; hub + agent; you paste a KEY/TOKEN from the UI.
+#   Grafana+Prometheus — graphs you design yourself; too much for a glance dashboard.
+#   Homarr widgets     — you already run Homarr; fine as a tile, not a live system view.
+
+services:
+  netdata:
+    image: netdata/netdata:stable
+    container_name: netdata
+    hostname: raspberrypi
+    restart: unless-stopped
+    pid: host
+    network_mode: host
+    cap_add:
+      - SYS_PTRACE
+      - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    environment:
+      - TZ=Europe/Amsterdam
+      - DISABLE_TELEMETRY=1
+      - NETDATA_EXTRA_DEB_PACKAGES=lm-sensors
+    volumes:
+      - netdataconfig:/etc/netdata
+      - netdatalib:/var/lib/netdata
+      - netdatacache:/var/cache/netdata
+      - /:/host/root:ro,rslave
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /etc/localtime:/etc/localtime:ro
+      - /proc:/host/proc:ro
+      - /sys:/host/sys:ro
+      - /etc/os-release:/host/etc/os-release:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+
+volumes:
+  netdataconfig:
+  netdatalib:
+  netdatacache:
