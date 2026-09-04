@@ -6,5 +6,8 @@ tunnel.env
 # But keep example files
 !*.env.example
 
+# Runtime output from the Pi WireGuard health checker
+**/wg-health-logs/
+
 
 

@@ -3,6 +3,7 @@ services:
     image: ghcr.io/wg-easy/wg-easy:15
     container_name: wg-easy
     restart: unless-stopped
+    # From outside the LAN, use wg-health-compose.yml (Healthchecks.io / Signal / ntfy).
     environment:
       # LAN HTTP UI. Do not publish 51821 to the internet.
       - INSECURE=true
@@ -15,6 +16,19 @@ services:
       - "51820:51820/udp"
       # Admin UI: LAN only. Replace with the Pi's static IP if you prefer an explicit bind.
       - "51821:51821/tcp"
+    # Portainer "unhealthy" if WireGuard is not up inside the container.
+    # Does not notify you from outside — use wg-health-compose.yml for that.
+    healthcheck:
+      test: ["CMD-SHELL", "wg show | grep -q '^interface:'"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     cap_add:
       - NET_ADMIN
       - SYS_MODULE

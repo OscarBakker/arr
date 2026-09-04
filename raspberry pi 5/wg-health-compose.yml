@@ -1,0 +1,108 @@
+# Portainer: Stacks → Add stack → paste this file (or Git).
+# Deploy on the same Pi as wgeasy-compose.yml. LAN only — this stack
+# opens no ports. After deploy, logs are in ./wg-health-logs/status.log
+# (or the bind path you set below).
+#
+# Why a separate "phone home" is needed
+# -------------------------------------
+# If WireGuard is the only way into the LAN, you cannot use WireGuard to
+# learn that WireGuard is down. The Pi still has normal outbound internet
+# (LAN → router → ISP), so it can report out. If the Pi is off or the
+# house has no internet, only an *external* missed-check-in can tell you.
+#
+# What usually breaks inbound WG
+# ------------------------------
+#   1. wg-easy container died / image pull failed / was not restarted
+#   2. Router reboot dropped the UDP 51820 port forward
+#   3. ISP changed the public IP and DDNS did not follow
+#   4. Pi lost power, ethernet, or the SD/NVMe had a bad day
+#   5. Nobody has handshaked recently — that is often just "no client
+#      connected", not a server outage. This check does not alert on that.
+#
+# Options (what to pick)
+# ----------------------
+#   A. This file + Healthchecks.io     Recommended first step.
+#      The Pi writes a timestamped snapshot (container state, `wg show`,
+#      public IP, recent reboot) and POSTs it to Healthchecks every 2 min.
+#      Missed ping or /fail → email / mobile app, and you can read the
+#      last snapshot without being on the LAN.
+#
+#   B. ntfy.sh or the Signal stack you already run
+#      Same checker, push on OK↔FAIL. Signal needs signal-cron-compose.yml
+#      up; ntfy needs only a topic name. These fire while the Pi is up.
+#      They cannot fire if the Pi is off — that is what Healthchecks is for.
+#
+#   C. Netdata Cloud
+#      You already run Netdata (netdata-compose.yml). Claim the node at
+#      https://app.netdata.cloud for CPU / Docker / disks from anywhere,
+#      no port forward. It does not prove UDP 51820 still works.
+#
+#   D. Cloudflare Tunnel (you already run cloudflared on the NAS)
+#      Expose Homarr or a tiny /health URL without opening ports. Good
+#      "is the house online" signal. Still an HTTP check, not a WG handshake.
+#
+#   E. Uptime Kuma / Better Stack / UptimeRobot
+#      External HTTP(S) ping of something you deliberately expose (tunnel
+#      or a cheap VPS). Same limit as D: they do not speak WireGuard UDP.
+#
+#   F. A cheap VPS that is a WireGuard peer
+#      The only option that truly tests "can someone outside complete a
+#      handshake". The VPS runs `wg show` every minute and alerts if
+#      last-handshake goes stale. €3–5/month. Do this if A keeps saying
+#      OK while your phone still cannot connect (port-forward / ISP UDP).
+#
+#   G. Home Assistant
+#      You already run HA. A command-line sensor on `wg show` + notify
+#      works while the Pi is up. Same outbound limit as B.
+#
+# Setup for A
+# -----------
+#   1. Create a free check at https://healthchecks.io
+#      Period 2 minutes, grace 10 minutes, notify email and/or the app.
+#   2. In Portainer, set HEALTHCHECKS_URL to the ping URL
+#      (https://hc-ping.com/<uuid>). Optional: NTFY_TOPIC, SIGNAL_*.
+#   3. Leave this stack running. When WG dies, read the Healthchecks
+#      ping body or ./wg-health-logs/status.log after you are back on LAN.
+
+services:
+  wg-health:
+    image: alpine:3.21
+    container_name: wg-health
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      TZ: Europe/Amsterdam
+      LOGDIR: /var/log/wg-health
+      WG_CONTAINER: wg-easy
+      CHECK_INTERVAL: "120"
+      HEALTHCHECKS_URL: ${HEALTHCHECKS_URL:-}
+      NTFY_TOPIC: ${NTFY_TOPIC:-}
+      SIGNAL_API_URL: http://127.0.0.1:8090
+      SIGNAL_ACCOUNT: ${SIGNAL_ACCOUNT:-}
+      SIGNAL_RECIPIENT: ${SIGNAL_RECIPIENT:-}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /proc/uptime:/host/uptime:ro
+      - ./wg-health/check.sh:/usr/local/bin/check.sh:ro
+      - ./wg-health-logs:/var/log/wg-health
+    # command must be a list with ONE string item. A bare "command: |"
+    # scalar gets word-split by Compose into many argv entries.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -eu
+        until apk add --no-cache docker-cli curl jq tzdata; do
+          echo "apk add failed (network not ready?), retrying in 5s..."
+          sleep 5
+        done
+        echo "wg-health started, interval $${CHECK_INTERVAL}s"
+        while true; do
+          /bin/sh /usr/local/bin/check.sh || true
+          sleep "$${CHECK_INTERVAL}"
+        done
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /var/log/wg-health/heartbeat && find /var/log/wg-health/heartbeat -mmin -5 | grep -q ."]
+      interval: 1m
+      timeout: 5s
+      retries: 3
+      start_period: 2m
