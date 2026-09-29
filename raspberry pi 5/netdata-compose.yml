@@ -17,6 +17,7 @@ services:
     restart: unless-stopped
     pid: host
     network_mode: host
+    mem_limit: 512m # 512mb of memory because the pi 5 hasn't enough memory to run netdata without limiting it
     cap_add:
       - SYS_PTRACE
       - SYS_ADMIN
